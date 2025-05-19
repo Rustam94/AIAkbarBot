@@ -27,7 +27,7 @@ def safe_send_message(chat_id, text, parse_mode=None):
         print(f"⚠️ Yuborishda xatolik: {e}")
 
 def strikethrough(text):
-    return ''.join([c + '\u0336' for c in text])
+    return ''.join([c + '̶' for c in text])
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -121,7 +121,7 @@ def handle_message(message):
 def ask_gpt(prompt):
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-4",  # GPT-4 versiyasiga o‘tkazildi
+            model="gpt-4",
             messages=[
                 {
                     "role": "system",
