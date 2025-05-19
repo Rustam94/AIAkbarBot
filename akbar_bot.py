@@ -65,29 +65,20 @@ def get_todoist_tasks():
         messages = []
         for task in tasks:
             message = (
-                f"📌 <b>Nomi:</b> {task.get('name', '-')}
-"
-                f"📄 <b>Tavsif:</b> {task.get('description', '-')}
-"
-                f"👤 <b>Yaratuvchi:</b> {task.get('creator', '-')}
-"
-                f"👥 <b>Bajaruvchi:</b> {task.get('assignee', '-')}
-"
-                f"📅 <b>Yaratilgan sana:</b> {task.get('created', '-')}
-"
-                f"⏳ <b>Topshirish muddati:</b> {task.get('due', '-')}
-"
+                f"📌 <b>Nomi:</b> {task.get('name', '-')}\n"
+                f"📄 <b>Tavsif:</b> {task.get('description', '-')}\n"
+                f"👤 <b>Yaratuvchi:</b> {task.get('creator', '-')}\n"
+                f"👥 <b>Bajaruvchi:</b> {task.get('assignee', '-')}\n"
+                f"📅 <b>Yaratilgan sana:</b> {task.get('created', '-')}\n"
+                f"⏳ <b>Topshirish muddati:</b> {task.get('due', '-')}\n"
                 f"🔗 <a href='{task.get('url', '#')}'>Todoist'da ochish</a>"
             )
 
             if task.get("subtasks"):
-                message += "
-
-🔽 <b>Pozitsiyalar:</b>"
+                message += "\n\n🔽 <b>Pozitsiyalar:</b>"
                 for subtask, status in task["subtasks"].items():
                     subtask_display = strikethrough(subtask) if status == "completed" else subtask
-                    message += f"
-  ➖ {subtask_display}"
+                    message += f"\n  ➖ {subtask_display}"
 
             messages.append(message)
 
