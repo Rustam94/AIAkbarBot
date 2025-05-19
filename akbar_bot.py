@@ -13,7 +13,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 BOT_NAME = os.getenv("BOT_NAME", "@Akbar")
 TODOIST_API_TOKEN = os.getenv("TODOIST_API_TOKEN")
 TODOIST_PROJECT_ID = os.getenv("TODOIST_PROJECT_ID")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")  # Group chat ID
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 openai.api_key = OPENAI_API_KEY
 bot = telegram.Bot(token=TELEGRAM_TOKEN)
@@ -32,13 +32,50 @@ def todoist_webhook():
     if data and data.get("event_name") == "item:added":
         task = data.get("event_data", {})
         task_info = (
-            f"📌 Yangi buyurtma qo‘shildi:\n"
-            f"📝 Nomi: {task.get('content')}\n"
-            f"📅 Muddat: {task.get('due', {}).get('date') or 'Belgilanmagan'}\n"
-            f"👤 Kim tomonidan: {task.get('added_by', {}).get('name', 'Noma’lum')}"
+            f"📌 <b>Yangi buyurtma qo‘shildi:</b>
+"
+            f"📝 <b>Nomi:</b> {task.get('content')}
+"
+            f"📅 <b>Muddat:</b> {task.get('due', {}).get('date') or 'Belgilanmagan'}"
         )
-        bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=task_info)
+        bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=task_info, parse_mode=telegram.constants.ParseMode.HTML)
     return "ok"
+
+def strikethrough(text):
+    return ''.join([c + '\u0336' for c in text])
+
+def get_todoist_tasks():
+    try:
+        headers = {"Authorization": f"Bearer {TODOIST_API_TOKEN}"}
+        params = {"project_id": TODOIST_PROJECT_ID}
+        response = requests.get("https://api.todoist.com/rest/v2/tasks", headers=headers, params=params)
+
+        if response.status_code != 200:
+            return ["⚠️ Vazifalarni olib bo‘lmadi."]
+
+        tasks = response.json()
+        if not tasks:
+            return ["Hech qanday faol buyurtma yo‘q."]
+
+        messages = []
+        for task in tasks:
+            title = task.get("content", "Noma’lum vazifa")
+            due = task["due"]["date"] if task.get("due") and task["due"].get("date") else "Muddat belgilanmagan"
+            task_url = task.get("url", "#")
+
+            message = (
+                f"📝 <b>Nomi:</b> {title}
+"
+                f"📅 <b>Muddat:</b> {due}
+"
+                f"🔗 <a href='{task_url}'>Todoist'da ochish</a>"
+            )
+
+            messages.append(message)
+
+        return messages
+    except Exception as e:
+        return [f"⚠️ Xatolik: {str(e)}"]
 
 def handle_message(message):
     text = message.text or ""
@@ -53,9 +90,12 @@ def handle_message(message):
     if "akbar" in text_lower or BOT_NAME.lower() in text_lower or is_reply_to_bot:
         if any(word in text_lower for word in ["buyurtma qo'sh", "vazifa yarat", "task qo'sh", "yangi buyurtma"]):
             bot.send_message(chat_id=message.chat_id, text="Buyurtma nomi va tavsifini yozib bering, iltimos.")
-        elif any(word in text_lower for word in [  "qanday vazifalar", "todoist", "buyurtmalar ro'yxati", "vazifalar ro'yxati", "nima vazifalar bor", "buyurtmalar bor", "vazifalar bor"]):
+        elif any(word in text_lower for word in [
+            "qanday vazifalar", "todoist", "buyurtmalar ro'yxati", "vazifalar bor", "buyurtmalar bor"
+        ]):
             tasks = get_todoist_tasks()
-            bot.send_message(chat_id=message.chat_id, text=tasks)
+            for t in tasks:
+                bot.send_message(chat_id=message.chat_id, text=t, parse_mode=telegram.constants.ParseMode.HTML)
         else:
             response = ask_gpt(text)
             bot.send_message(chat_id=message.chat_id, text=response)
@@ -81,30 +121,6 @@ def ask_gpt(prompt):
         return response["choices"][0]["message"]["content"].strip()
     except Exception as e:
         return f"⚠️ AI xatosi: {str(e)}"
-
-def get_todoist_tasks():
-    try:
-        headers = {"Authorization": f"Bearer {TODOIST_API_TOKEN}"}
-        params = {"project_id": TODOIST_PROJECT_ID}
-        response = requests.get("https://api.todoist.com/rest/v2/tasks", headers=headers, params=params)
-
-        if response.status_code != 200:
-            return ["⚠️ Vazifalarni olib bo‘lmadi."]
-
-        tasks = response.json()
-        if not tasks:
-            return ["Hech qanday faol buyurtma yo‘q."]
-
-        messages = []
-        for t in tasks:
-            title = t.get("content", "Noma’lum vazifa")
-            due = t["due"]["date"] if t.get("due") and t["due"].get("date") else "Muddat belgilanmagan"
-            messages.append(f"📝 {title}\n📅 Muddat: {due}")
-        return messages
-    except Exception as e:
-        return [f"⚠️ Xatolik: {str(e)}"]
-
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
