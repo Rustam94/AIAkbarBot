@@ -24,7 +24,14 @@ def webhook():
 
 def handle_message(message):
     text = message.text
-    if text and ("akbar" in text.lower() or BOT_NAME.lower() in text.lower()):
+    if not text:
+        return
+
+    # Katta-kichik harf ajratmay trigger so‘zlarni tekshiramiz
+    text_lower = text.lower()
+    trigger_words = ["akbar", BOT_NAME.lower()]
+
+    if any(trigger in text_lower for trigger in trigger_words):
         response = ask_gpt(text)
         message.reply_text("🧑‍💼 Akbar:\n" + response)
 
@@ -42,7 +49,7 @@ def ask_gpt(prompt):
                         "Hech qachon foydalanuvchini 'Akbar' deb chaqirma. "
                         "Foydalanuvchiga mijoz emas, balki ishchi sifatida javob ber. "
                         "Javoblaring doimo jamoaviy, qisqa va rasmiy uslubda bo‘lsin. "
-                        "O'zingni ishchi sifatida tut, samimiy bo‘l, lekin doimo ichki muomala uslubida."
+                        "O'zingni ishchi sifatida tut, samimiy bo‘l, lekin ichki muomala uslubida."
                     )
                 },
                 {"role": "user", "content": prompt}
