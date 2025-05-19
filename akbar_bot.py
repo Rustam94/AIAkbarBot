@@ -27,7 +27,7 @@ def safe_send_message(chat_id, text, parse_mode=None):
         print(f"⚠️ Yuborishda xatolik: {e}")
 
 def strikethrough(text):
-    return ''.join([c + '̶' for c in text])
+    return ''.join([c + '\u0336' for c in text])
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -58,27 +58,49 @@ def get_todoist_tasks():
         if response.status_code != 200:
             return ["⚠️ Vazifalarni olib bo‘lmadi."]
 
-        tasks = response.json()
-        if not tasks:
-            return ["Hech qanday faol buyurtma yo‘q."]
+        all_tasks = response.json()
+        tasks_dict = {}
+        subtasks_map = {}
+
+        for task in all_tasks:
+            if task.get("parent_id"):
+                parent_id = task["parent_id"]
+                if parent_id not in subtasks_map:
+                    subtasks_map[parent_id] = []
+                subtasks_map[parent_id].append((task["content"], "completed" if task.get("is_completed") else "active"))
+            else:
+                tasks_dict[task["id"]] = {
+                    "name": task.get("content", "No name"),
+                    "description": task.get("description", "—"),
+                    "created": task.get("created_at", "—"),
+                    "due": task.get("due", {}).get("date", "Muddat belgilanmagan") if task.get("due") else "Muddat belgilanmagan",
+                    "url": task.get("url", "#"),
+                    "subtasks": {},
+                    "creator": task.get("creator_id", "—"),
+                    "assignee": task.get("assignee_id", "—")
+                }
+
+        for parent_id, subtasks in subtasks_map.items():
+            if parent_id in tasks_dict:
+                tasks_dict[parent_id]["subtasks"] = {name: status for name, status in subtasks}
 
         messages = []
-        for task in tasks:
+        for task in tasks_dict.values():
             message = (
-                f"📌 <b>Nomi:</b> {task.get('name', '-')}\n"
-                f"📄 <b>Tavsif:</b> {task.get('description', '-')}\n"
-                f"👤 <b>Yaratuvchi:</b> {task.get('creator', '-')}\n"
-                f"👥 <b>Bajaruvchi:</b> {task.get('assignee', '-')}\n"
-                f"📅 <b>Yaratilgan sana:</b> {task.get('created', '-')}\n"
-                f"⏳ <b>Topshirish muddati:</b> {task.get('due', '-')}\n"
-                f"🔗 <a href='{task.get('url', '#')}'>Todoist'da ochish</a>"
+                f"📌 <b>Nomi:</b> {task['name']}\n"
+                f"📄 <b>Tavsif:</b> {task['description']}\n"
+                f"👤 <b>Yaratuvchi:</b> {task['creator']}\n"
+                f"👥 <b>Bajaruvchi:</b> {task['assignee']}\n"
+                f"📅 <b>Yaratilgan sana:</b> {task['created']}\n"
+                f"⏳ <b>Topshirish muddati:</b> {task['due']}\n"
+                f"🔗 <a href='{task['url']}'>Todoist'da ochish</a>"
             )
 
-            if task.get("subtasks"):
+            if task["subtasks"]:
                 message += "\n\n🔽 <b>Pozitsiyalar:</b>"
                 for subtask, status in task["subtasks"].items():
-                    subtask_display = strikethrough(subtask) if status == "completed" else subtask
-                    message += f"\n  ➖ {subtask_display}"
+                    display = strikethrough(subtask) if status == "completed" else subtask
+                    message += f"\n  ➖ {display}"
 
             messages.append(message)
 
