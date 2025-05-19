@@ -39,12 +39,11 @@ def todoist_webhook():
     if data and data.get("event_name") == "item:added":
         task = data.get("event_data", {})
         task_info = (
-            f"📌 <b>Yangi buyurtma qo‘shildi:</b>
-"
-            f"📝 <b>Nomi:</b> {task.get('content')}
-"
-            f"📅 <b>Muddat:</b> {task.get('due', {}).get('date') or 'Belgilanmagan'}"
-        )
+    f"📌 <b>Yangi buyurtma qo‘shildi:</b>\n"
+    f"📝 <b>Nomi:</b> {task.get('content')}\n"
+    f"📅 <b>Muddat:</b> {task.get('due', {}).get('date') or 'Belgilanmagan'}"
+)
+
         threading.Thread(target=safe_send_message, args=(TELEGRAM_CHAT_ID, task_info, "HTML")).start()
     return "ok"
 
@@ -71,10 +70,8 @@ def get_todoist_tasks():
             task_url = task.get("url", "#")
 
             message = (
-                f"📝 <b>Nomi:</b> {title}
-"
-                f"📅 <b>Muddat:</b> {due}
-"
+                f"📝 <b>Nomi:</b> {title}"
+                f"📅 <b>Muddat:</b> {due}"
                 f"🔗 <a href='{task_url}'>Todoist'da ochish</a>"
             )
 
