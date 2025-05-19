@@ -26,6 +26,9 @@ def safe_send_message(chat_id, text, parse_mode=None):
     except Exception as e:
         print(f"⚠️ Yuborishda xatolik: {e}")
 
+def strikethrough(text):
+    return ''.join([c + '\u0336' for c in text])
+
 @app.route("/webhook", methods=["POST"])
 def webhook():
     update = telegram.Update.de_json(request.get_json(force=True), bot)
@@ -39,16 +42,12 @@ def todoist_webhook():
     if data and data.get("event_name") == "item:added":
         task = data.get("event_data", {})
         task_info = (
-    f"📌 <b>Yangi buyurtma qo‘shildi:</b>\n"
-    f"📝 <b>Nomi:</b> {task.get('content')}\n"
-    f"📅 <b>Muddat:</b> {task.get('due', {}).get('date') or 'Belgilanmagan'}"
-)
-
+            f"📌 <b>Yangi buyurtma qo‘shildi:</b>\n"
+            f"📝 <b>Nomi:</b> {task.get('content')}\n"
+            f"📅 <b>Muddat:</b> {task.get('due', {}).get('date') or 'Belgilanmagan'}"
+        )
         threading.Thread(target=safe_send_message, args=(TELEGRAM_CHAT_ID, task_info, "HTML")).start()
     return "ok"
-
-def strikethrough(text):
-    return ''.join([c + '̶' for c in text])
 
 def get_todoist_tasks():
     try:
@@ -65,15 +64,30 @@ def get_todoist_tasks():
 
         messages = []
         for task in tasks:
-            title = task.get("content", "Noma’lum vazifa")
-            due = task["due"]["date"] if task.get("due") and task["due"].get("date") else "Muddat belgilanmagan"
-            task_url = task.get("url", "#")
-
             message = (
-                f"📝 <b>Nomi:</b> {title}"
-                f"📅 <b>Muddat:</b> {due}"
-                f"🔗 <a href='{task_url}'>Todoist'da ochish</a>"
+                f"📌 <b>Nomi:</b> {task.get('name', '-')}
+"
+                f"📄 <b>Tavsif:</b> {task.get('description', '-')}
+"
+                f"👤 <b>Yaratuvchi:</b> {task.get('creator', '-')}
+"
+                f"👥 <b>Bajaruvchi:</b> {task.get('assignee', '-')}
+"
+                f"📅 <b>Yaratilgan sana:</b> {task.get('created', '-')}
+"
+                f"⏳ <b>Topshirish muddati:</b> {task.get('due', '-')}
+"
+                f"🔗 <a href='{task.get('url', '#')}'>Todoist'da ochish</a>"
             )
+
+            if task.get("subtasks"):
+                message += "
+
+🔽 <b>Pozitsiyalar:</b>"
+                for subtask, status in task["subtasks"].items():
+                    subtask_display = strikethrough(subtask) if status == "completed" else subtask
+                    message += f"
+  ➖ {subtask_display}"
 
             messages.append(message)
 
@@ -107,15 +121,14 @@ def handle_message(message):
 def ask_gpt(prompt):
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4",  # GPT-4 versiyasiga o‘tkazildi
             messages=[
                 {
                     "role": "system",
                     "content": (
-                        "Sen 'Akbar' ismli sun’iy intellekt yordamchisan. "
-                        "Sen ishlab chiqarish jamoasining ichki a’zosisan va Todoist asosida ishlaysan. "
-                        "Foydalanuvchilarning buyruqlarini faqat kerakli hollarda bajarasiz. "
-                        "Javoblaring doimo o‘zbek tilida, samimiy, qisqa va jamoaviy bo‘lsin."
+                        "Sen ishlab chiqarish jamoasining ichki sun’iy intellekt yordamchisan. "
+                        "Sening isming Akbar. Foydalanuvchilar bilan sizlab, jamoa a'zosi sifatida suhbatlash. "
+                        "Todoist asosida ishlaysan. Yordamga tayyormisan degan savollarga samimiy, aniq, odamga o‘xshab javob ber."
                     )
                 },
                 {"role": "user", "content": prompt}
