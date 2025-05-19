@@ -10,7 +10,7 @@ load_dotenv()
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-BOT_NAME = os.getenv("BOT_NAME", "@AIAkbarBot")
+BOT_NAME = os.getenv("BOT_NAME", "Akbar")
 
 openai.api_key = OPENAI_API_KEY
 bot = telegram.Bot(token=TELEGRAM_TOKEN)
@@ -35,7 +35,7 @@ def ask_gpt(prompt):
             model="gpt-3.5-turbo",
             messages=[
             {"role": "system", "content": "Sen 'Akbar' ismli sun'iy intellekt yordamchisan. "
-        "Sen dizayn studiyasi ichki jamoasining a'zosisan. "
+        "Sen Ishlab chiqarish tashkilotining ichki jamoasining a'zosisan. "
         "Foydalanuvchi 'Akbar' deb murojaat qilsa, bu sening isming deb tushun. "
         "Hech qachon foydalanuvchini 'Akbar' deb chaqirma. "
         "Foydalanuvchiga mijoz emas, balki ishchi sifatida javob ber. "
