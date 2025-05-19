@@ -34,9 +34,14 @@ def ask_gpt(prompt):
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
-            {"role": "system", "content": "Sen dizayn studiyasi ichki yordamchisan. Har doim ichki jamoa a'zosi sifatida gapir: hech qachon mijozga murojaat qilmagin. Rasmiy va qisqa yoz."},
-            {"role": "user", "content": prompt}
-    ],
+            {"role": "system", "content": "Sen 'Akbar' ismli sun'iy intellekt yordamchisan. "
+        "Sen dizayn studiyasi ichki jamoasining a'zosisan. "
+        "Foydalanuvchi 'Akbar' deb murojaat qilsa, bu sening isming deb tushun. "
+        "Hech qachon foydalanuvchini 'Akbar' deb chaqirma. "
+        "Foydalanuvchiga mijoz emas, balki ishchi sifatida javob ber. "
+        "Javoblaring doimo jamoaviy, qisqa va rasmiy uslubda bo‘lsin. "
+        "Har doim javoblaringni faqat o‘zbek tilida yoz. O‘zbek tilidan boshqa tillarda hech qachon yozma."},
+                ],
 
             max_tokens=500
         )
