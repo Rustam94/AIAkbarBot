@@ -1,5 +1,4 @@
 import os
-import logging
 import openai
 from flask import Flask, request
 import telegram
@@ -27,17 +26,27 @@ def handle_message(message):
     text = message.text
     if text and ("akbar" in text.lower() or BOT_NAME.lower() in text.lower()):
         response = ask_gpt(text)
-        message.reply_text(response)
+        message.reply_text("🧑‍💼 Akbar:\n" + response)
 
 def ask_gpt(prompt):
     try:
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
-            {"role": "system", "content": "Sen dizayn studiyasi ichki yordamchisan. Har doim ichki jamoa a'zosi sifatida gapir: hech qachon mijozga murojaat qilmagin. Rasmiy va qisqa yoz."},
-            {"role": "user", "content": prompt}
-    ],
-
+                {
+                    "role": "system",
+                    "content": (
+                        "Sen 'Akbar' ismli sun'iy intellekt yordamchisan. "
+                        "Sen dizayn studiyasi ichki jamoasining a'zosisan. "
+                        "Foydalanuvchi 'Akbar' deb murojaat qilsa, bu sening isming deb tushun. "
+                        "Hech qachon foydalanuvchini 'Akbar' deb chaqirma. "
+                        "Foydalanuvchiga mijoz emas, balki ishchi sifatida javob ber. "
+                        "Javoblaring doimo jamoaviy, qisqa va rasmiy uslubda bo‘lsin. "
+                        "O'zingni ishchi sifatida tut, samimiy bo‘l, lekin doimo ichki muomala uslubida."
+                    )
+                },
+                {"role": "user", "content": prompt}
+            ],
             max_tokens=500
         )
         return response["choices"][0]["message"]["content"].strip()
