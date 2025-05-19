@@ -10,7 +10,7 @@ load_dotenv()
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-BOT_NAME = os.getenv("BOT_NAME", "@Akbar")
+BOT_NAME = os.getenv("BOT_NAME", "@AIAkbarBot")
 
 openai.api_key = OPENAI_API_KEY
 bot = telegram.Bot(token=TELEGRAM_TOKEN)
@@ -25,15 +25,19 @@ def webhook():
 
 def handle_message(message):
     text = message.text
-    if text and BOT_NAME.lower() in text.lower():
+    if text and ("akbar" in text.lower() or BOT_NAME.lower() in text.lower()):
         response = ask_gpt(text)
         message.reply_text(response)
 
 def ask_gpt(prompt):
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",  # Agar sizda GPT-4 bo‘lsa, shuni yozing
-            messages=[{"role": "user", "content": prompt}],
+            model="gpt-3.5-turbo",
+            messages=[
+            {"role": "system", "content": "Sen dizayn studiyasi ichki yordamchisan. Har doim ichki jamoa a'zosi sifatida gapir: hech qachon mijozga murojaat qilmagin. Rasmiy va qisqa yoz."},
+            {"role": "user", "content": prompt}
+    ],
+
             max_tokens=500
         )
         return response["choices"][0]["message"]["content"].strip()
