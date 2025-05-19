@@ -30,7 +30,7 @@ def safe_send_message(chat_id, text, parse_mode=None):
         print(f"⚠️ Yuborishda xatolik: {e}")
 
 def strikethrough(text):
-    return ''.join([c + '\u0336' for c in text])
+    return ''.join([c + '̶' for c in text])
 
 def load_todoist_users():
     try:
@@ -112,6 +112,7 @@ def handle_message(message):
 def ask_gpt_with_tasks(prompt, tasks):
     try:
         task_info_text = json.dumps(tasks, ensure_ascii=False)
+        user_prompt = f"Savol: {prompt}\n\nBuyurtmalar: {task_info_text}"
         response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[
@@ -124,9 +125,7 @@ def ask_gpt_with_tasks(prompt, tasks):
                         "Savollar har xil bo'lishi mumkin: kim bajarayapti, qachon tugaydi, holati qanday, nimalar bor, va hokazo."
                     )
                 },
-                {"role": "user", "content": f"Savol: {prompt}
-
-Buyurtmalar: {task_info_text}"}
+                {"role": "user", "content": user_prompt}
             ],
             max_tokens=800
         )
