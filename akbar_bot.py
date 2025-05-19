@@ -40,8 +40,7 @@ def todoist_webhook():
 "
             f"👤 Kim tomonidan: {task.get('added_by', {}).get('name', 'Noma’lum')}"
         )
-        bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=f"🧑‍🏭 Akbar:
-{task_info}")
+        bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=task_info)
     return "ok"
 
 def handle_message(message):
@@ -50,16 +49,13 @@ def handle_message(message):
 
     if "akbar" in text_lower or BOT_NAME.lower() in text_lower:
         if any(word in text_lower for word in ["buyurtma qo'sh", "vazifa yarat", "task qo'sh", "yangi buyurtma"]):
-            bot.send_message(chat_id=message.chat_id, text="🧑‍🏭 Akbar:
-Buyurtma nomi va tavsifini yozib bering, iltimos.")
+            bot.send_message(chat_id=message.chat_id, text="Buyurtma nomi va tavsifini yozib bering, iltimos.")
         elif "qanday buyurtmalar bor" in text_lower or "vazifalar ro'yxati" in text_lower:
             tasks = get_todoist_tasks()
-            bot.send_message(chat_id=message.chat_id, text="🧑‍🏭 Akbar:
-" + tasks)
+            bot.send_message(chat_id=message.chat_id, text=tasks)
         else:
             response = ask_gpt(text)
-            bot.send_message(chat_id=message.chat_id, text="🧑‍🏭 Akbar:
-" + response)
+            bot.send_message(chat_id=message.chat_id, text=response)
 
 def ask_gpt(prompt):
     try:
