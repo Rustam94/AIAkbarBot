@@ -32,12 +32,9 @@ def todoist_webhook():
     if data and data.get("event_name") == "item:added":
         task = data.get("event_data", {})
         task_info = (
-            f"📌 Yangi buyurtma qo‘shildi:
-"
-            f"📝 Nomi: {task.get('content')}
-"
-            f"📅 Muddat: {task.get('due', {}).get('date') or 'Belgilanmagan'}
-"
+            f"📌 Yangi buyurtma qo‘shildi:"
+            f"📝 Nomi: {task.get('content')}"
+            f"📅 Muddat: {task.get('due', {}).get('date') or 'Belgilanmagan'}"
             f"👤 Kim tomonidan: {task.get('added_by', {}).get('name', 'Noma’lum')}"
         )
         bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=task_info)
