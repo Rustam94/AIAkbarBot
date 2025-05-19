@@ -53,13 +53,9 @@ def handle_message(message):
     if "akbar" in text_lower or BOT_NAME.lower() in text_lower or is_reply_to_bot:
         if any(word in text_lower for word in ["buyurtma qo'sh", "vazifa yarat", "task qo'sh", "yangi buyurtma"]):
             bot.send_message(chat_id=message.chat_id, text="Buyurtma nomi va tavsifini yozib bering, iltimos.")
-        elif any(word in text_lower for word in [
-            "qanday vazifalar", "todoist", "buyurtmalar ro'yxati", "vazifalar ro'yxati",
-            "nima vazifalar bor", "buyurtmalar bor", "vazifalar bor"
-        ]):
-    tasks = get_todoist_tasks()
-    for t in tasks:
-        bot.send_message(chat_id=message.chat_id, text=t)
+        elif any(word in text_lower for word in [  "qanday vazifalar", "todoist", "buyurtmalar ro'yxati", "vazifalar ro'yxati", "nima vazifalar bor", "buyurtmalar bor", "vazifalar bor"]):
+            tasks = get_todoist_tasks()
+            bot.send_message(chat_id=message.chat_id, text=tasks)
         else:
             response = ask_gpt(text)
             bot.send_message(chat_id=message.chat_id, text=response)
