@@ -32,12 +32,9 @@ def todoist_webhook():
     if data and data.get("event_name") == "item:added":
         task = data.get("event_data", {})
         task_info = (
-            f"📌 Yangi buyurtma qo‘shildi:
-"
-            f"📝 Nomi: {task.get('content')}
-"
-            f"📅 Muddat: {task.get('due', {}).get('date') or 'Belgilanmagan'}
-"
+            f"📌 Yangi buyurtma qo‘shildi:\n"
+            f"📝 Nomi: {task.get('content')}\n"
+            f"📅 Muddat: {task.get('due', {}).get('date') or 'Belgilanmagan'}\n"
             f"👤 Kim tomonidan: {task.get('added_by', {}).get('name', 'Noma’lum')}"
         )
         bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=task_info)
@@ -101,10 +98,7 @@ def get_todoist_tasks():
         reply = ""
         for t in tasks:
             due = t.get("due", {}).get("date", "Muddat belgilanmagan")
-            reply += f"📝 {t['content']}
-📅 Muddat: {due}
-
-"
+            reply += f"📝 {t['content']}\n📅 Muddat: {due}\n\n"
         return reply.strip()
     except Exception as e:
         return f"⚠️ Xatolik: {str(e)}"
