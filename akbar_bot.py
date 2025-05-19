@@ -22,6 +22,7 @@ bot = telegram.Bot(token=TELEGRAM_TOKEN)
 app = Flask(__name__)
 
 user_map = {}
+pending_task = {}
 
 def safe_send_message(chat_id, text, parse_mode=None):
     try:
@@ -30,7 +31,7 @@ def safe_send_message(chat_id, text, parse_mode=None):
         print(f"⚠️ Yuborishda xatolik: {e}")
 
 def strikethrough(text):
-    return ''.join([c + '̶' for c in text])
+    return ''.join([c + '\u0336' for c in text])
 
 def load_todoist_users():
     try:
@@ -96,8 +97,20 @@ def get_todoist_tasks():
 def handle_message(message):
     text = message.text or ""
     text_lower = text.lower()
+    chat_id = message.chat_id
+    user_id = message.from_user.id
     tasks = get_todoist_tasks()
     tasks_list = list(tasks.values())
+
+    if user_id in pending_task:
+        pending = pending_task.pop(user_id)
+        if "." in text:
+            name, desc = map(str.strip, text.split(".", 1))
+        else:
+            name, desc = text.strip(), "Tavsif berilmagan"
+        result = create_todoist_task(name, desc)
+        threading.Thread(target=safe_send_message, args=(chat_id, result, None)).start()
+        return
 
     is_reply_to_bot = (
         message.reply_to_message and
@@ -105,9 +118,37 @@ def handle_message(message):
         message.reply_to_message.from_user.username == bot.get_me().username
     )
 
+    if "yangi buyurtma" in text_lower or "buyurtma qo‘sh" in text_lower or "vazifa yarat" in text_lower:
+        pending_task[user_id] = True
+        threading.Thread(
+            target=safe_send_message,
+            args=(chat_id, "Yangi buyurtma yaratish uchun nomi va tavsifini yuboring. Masalan: 📌 Matn yozish. Yangi maqola uchun kirish qismi", None)
+        ).start()
+        return
+
     if "akbar" in text_lower or BOT_NAME.lower() in text_lower or is_reply_to_bot or message.reply_to_message:
         response = ask_gpt_with_tasks(text, tasks_list)
-        threading.Thread(target=safe_send_message, args=(message.chat_id, response, None)).start()
+        threading.Thread(target=safe_send_message, args=(chat_id, response, None)).start()
+
+def create_todoist_task(name, description):
+    try:
+        headers = {
+            "Authorization": f"Bearer {TODOIST_API_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        data = {
+            "content": name,
+            "description": description,
+            "project_id": TODOIST_PROJECT_ID
+        }
+        response = requests.post("https://api.todoist.com/rest/v2/tasks", headers=headers, data=json.dumps(data))
+        if response.status_code == 200 or response.status_code == 204:
+            return f"📌 Buyurtma muvaffaqiyatli qo‘shildi:
+📝 {name}"
+        else:
+            return f"⚠️ Xatolik: Buyurtma qo‘shilmadi. {response.text}"
+    except Exception as e:
+        return f"⚠️ Serverda xatolik: {str(e)}"
 
 def ask_gpt_with_tasks(prompt, tasks):
     try:
@@ -119,10 +160,13 @@ def ask_gpt_with_tasks(prompt, tasks):
                 {
                     "role": "system",
                     "content": (
-                        "Siz ishlab chiqarish bo'yicha buyurtmalarni boshqaruvchi yordamchi AI botsiz. "
-                        "Quyida buyurtmalar ro'yxati mavjud. Foydalanuvchi sizdan har qanday savol so‘rasa, "
+                        "Siz ishlab chiqarish bo'yicha buyurtmalarni boshqaruvchi yordamchi AI botsiz. Xatolarsiz, toza o'zbek tilida yoz. "
+                        "Quyida buyurtmalar ro'yxati mavjud. Foydalanuvchi (Hamkasb) sizdan har qanday savol so‘rasa, "
                         "siz shu ro'yxat asosida aniq, qisqa, jamoa tilida javob berasiz. "
                         "Savollar har xil bo'lishi mumkin: kim bajarayapti, qachon tugaydi, holati qanday, nimalar bor, va hokazo."
+                        "Todoist bilan integratsiyalashgansan. Foydalanuvchilarning buyruqlari asosida:"
+                        " yangi buyurtma yaratish, borlarini ko‘rish, bajaruvchilarni aytish, muddatlarini eslatish — bularni bajara olasan. "
+                        "Yangi buyurtma qo‘sh deyilganida, undan nomi va tavsifini so‘raysan va buyurtmani yaratib yuborasan."
                     )
                 },
                 {"role": "user", "content": user_prompt}
