@@ -1,6 +1,7 @@
 import os
 import openai
 import requests
+import threading
 from flask import Flask, request
 import telegram
 from dotenv import load_dotenv
@@ -19,6 +20,12 @@ openai.api_key = OPENAI_API_KEY
 bot = telegram.Bot(token=TELEGRAM_TOKEN)
 app = Flask(__name__)
 
+def safe_send_message(chat_id, text, parse_mode=None):
+    try:
+        bot.send_message(chat_id=chat_id, text=text, parse_mode=parse_mode)
+    except Exception as e:
+        print(f"⚠️ Yuborishda xatolik: {e}")
+
 @app.route("/webhook", methods=["POST"])
 def webhook():
     update = telegram.Update.de_json(request.get_json(force=True), bot)
@@ -32,15 +39,17 @@ def todoist_webhook():
     if data and data.get("event_name") == "item:added":
         task = data.get("event_data", {})
         task_info = (
-            f"📌 <b>Yangi buyurtma qo‘shildi:</b>\n"
-            f"📝 <b>Nomi:</b> {task.get('content')}\n"
+            f"📌 <b>Yangi buyurtma qo‘shildi:</b>
+"
+            f"📝 <b>Nomi:</b> {task.get('content')}
+"
             f"📅 <b>Muddat:</b> {task.get('due', {}).get('date') or 'Belgilanmagan'}"
         )
-        bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=task_info, parse_mode="HTML")
+        threading.Thread(target=safe_send_message, args=(TELEGRAM_CHAT_ID, task_info, "HTML")).start()
     return "ok"
 
 def strikethrough(text):
-    return ''.join([c + '\u0336' for c in text])
+    return ''.join([c + '̶' for c in text])
 
 def get_todoist_tasks():
     try:
@@ -62,8 +71,10 @@ def get_todoist_tasks():
             task_url = task.get("url", "#")
 
             message = (
-                f"📝 <b>Nomi:</b> {title}\n"
-                f"📅 <b>Muddat:</b> {due}\n"
+                f"📝 <b>Nomi:</b> {title}
+"
+                f"📅 <b>Muddat:</b> {due}
+"
                 f"🔗 <a href='{task_url}'>Todoist'da ochish</a>"
             )
 
@@ -85,16 +96,16 @@ def handle_message(message):
 
     if "akbar" in text_lower or BOT_NAME.lower() in text_lower or is_reply_to_bot:
         if any(word in text_lower for word in ["buyurtma qo'sh", "vazifa yarat", "task qo'sh", "yangi buyurtma"]):
-            bot.send_message(chat_id=message.chat_id, text="Buyurtma nomi va tavsifini yozib bering, iltimos.")
+            threading.Thread(target=safe_send_message, args=(message.chat_id, "Buyurtma nomi va tavsifini yozib bering, iltimos.", None)).start()
         elif any(word in text_lower for word in [
             "qanday vazifalar", "todoist", "buyurtmalar ro'yxati", "vazifalar bor", "buyurtmalar bor"
         ]):
             tasks = get_todoist_tasks()
             for t in tasks:
-                bot.send_message(chat_id=message.chat_id, text=t, parse_mode="HTML")
+                threading.Thread(target=safe_send_message, args=(message.chat_id, t, "HTML")).start()
         else:
             response = ask_gpt(text)
-            bot.send_message(chat_id=message.chat_id, text=response)
+            threading.Thread(target=safe_send_message, args=(message.chat_id, response, None)).start()
 
 def ask_gpt(prompt):
     try:
