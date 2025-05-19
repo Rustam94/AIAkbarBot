@@ -32,9 +32,12 @@ def todoist_webhook():
     if data and data.get("event_name") == "item:added":
         task = data.get("event_data", {})
         task_info = (
-            f"📌 Yangi buyurtma qo‘shildi:\n"
-            f"📝 Nomi: {task.get('content')}\n"
-            f"📅 Muddat: {task.get('due', {}).get('date') or 'Belgilanmagan'}\n"
+            f"📌 Yangi buyurtma qo‘shildi:
+"
+            f"📝 Nomi: {task.get('content')}
+"
+            f"📅 Muddat: {task.get('due', {}).get('date') or 'Belgilanmagan'}
+"
             f"👤 Kim tomonidan: {task.get('added_by', {}).get('name', 'Noma’lum')}"
         )
         bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=task_info)
@@ -44,10 +47,16 @@ def handle_message(message):
     text = message.text or ""
     text_lower = text.lower()
 
-    if "akbar" in text_lower or BOT_NAME.lower() in text_lower:
+    is_reply_to_bot = (
+        message.reply_to_message and
+        message.reply_to_message.from_user and
+        message.reply_to_message.from_user.username == bot.get_me().username
+    )
+
+    if "akbar" in text_lower or BOT_NAME.lower() in text_lower or is_reply_to_bot:
         if any(word in text_lower for word in ["buyurtma qo'sh", "vazifa yarat", "task qo'sh", "yangi buyurtma"]):
             bot.send_message(chat_id=message.chat_id, text="Buyurtma nomi va tavsifini yozib bering, iltimos.")
-        elif "qanday buyurtmalar bor" in text_lower or "vazifalar ro'yxati" in text_lower:
+        elif any(word in text_lower for word in ["qanday buyurtmalar", "todoistda", "buyurtmalar ro'yxati", "vazifalar ro'yxati"]):
             tasks = get_todoist_tasks()
             bot.send_message(chat_id=message.chat_id, text=tasks)
         else:
@@ -92,7 +101,10 @@ def get_todoist_tasks():
         reply = ""
         for t in tasks:
             due = t.get("due", {}).get("date", "Muddat belgilanmagan")
-            reply += f"📝 {t['content']}\n📅 Muddat: {due}\n\n"
+            reply += f"📝 {t['content']}
+📅 Muddat: {due}
+
+"
         return reply.strip()
     except Exception as e:
         return f"⚠️ Xatolik: {str(e)}"
