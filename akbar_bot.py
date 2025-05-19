@@ -1,4 +1,5 @@
 import os
+import json
 import openai
 import requests
 import threading
@@ -49,20 +50,7 @@ def webhook():
         handle_message(update.message)
     return "ok"
 
-@app.route("/todoist-hook", methods=["POST"])
-def todoist_webhook():
-    data = request.json
-    if data and data.get("event_name") == "item:added":
-        task = data.get("event_data", {})
-        task_info = (
-            f"📌 <b>Yangi buyurtma qo‘shildi:</b>\n"
-            f"📝 <b>Nomi:</b> {task.get('content')}\n"
-            f"📅 <b>Muddat:</b> {task.get('due', {}).get('date') or 'Belgilanmagan'}"
-        )
-        threading.Thread(target=safe_send_message, args=(TELEGRAM_CHAT_ID, task_info, "HTML")).start()
-    return "ok"
-
-def get_todoist_tasks(full=False):
+def get_todoist_tasks():
     try:
         load_todoist_users()
         headers = {"Authorization": f"Bearer {TODOIST_API_TOKEN}"}
@@ -101,49 +89,15 @@ def get_todoist_tasks(full=False):
             if parent_id in tasks_dict:
                 tasks_dict[parent_id]["subtasks"] = {name: status for name, status in subtasks}
 
-        if not full:
-            return tasks_dict
-
-        messages = []
-        for task in tasks_dict.values():
-            message = (
-                f"📌 <b>Nomi:</b> {task['name']}\n"
-                f"📄 <b>Tavsif:</b> {task['description']}\n"
-                f"👤 <b>Yaratuvchi:</b> {task['creator']}\n"
-                f"👥 <b>Bajaruvchi:</b> {task['assignee']}\n"
-                f"📅 <b>Yaratilgan sana:</b> {task['created']}\n"
-                f"⏳ <b>Topshirish muddati:</b> {task['due']}\n"
-                f"🔗 <a href='{task['url']}'>Todoist'da ochish</a>"
-            )
-
-            if task["subtasks"]:
-                message += "\n\n🔽 <b>Pozitsiyalar:</b>"
-                for subtask, status in task["subtasks"].items():
-                    display = strikethrough(subtask) if status == "completed" else subtask
-                    message += f"\n  ➖ {display}"
-
-            messages.append(message)
-
-        return messages
+        return tasks_dict
     except Exception as e:
-        return [f"⚠️ Xatolik: {str(e)}"]
+        return {}
 
 def handle_message(message):
     text = message.text or ""
     text_lower = text.lower()
     tasks = get_todoist_tasks()
-
-    if message.reply_to_message:
-        for task in tasks.values():
-            if task["name"] in message.reply_to_message.text:
-                if "bajaruvchi" in text_lower:
-                    response = f"👥 <b>Bajaruvchi:</b> {task['assignee']}"
-                elif "holat" in text_lower or "qanday" in text_lower:
-                    response = f"📌 <b>Buyurtma:</b> {task['name']}\n⏳ <b>Muddat:</b> {task['due']}"
-                else:
-                    response = "Buyurtmaga oid savolingizni aniqroq yozing."
-                threading.Thread(target=safe_send_message, args=(message.chat_id, response, "HTML")).start()
-                return
+    tasks_list = list(tasks.values())
 
     is_reply_to_bot = (
         message.reply_to_message and
@@ -151,34 +105,30 @@ def handle_message(message):
         message.reply_to_message.from_user.username == bot.get_me().username
     )
 
-    if "akbar" in text_lower or BOT_NAME.lower() in text_lower or is_reply_to_bot:
-        if any(word in text_lower for word in ["buyurtma qo'sh", "vazifa yarat", "task qo'sh", "yangi buyurtma"]):
-            threading.Thread(target=safe_send_message, args=(message.chat_id, "Buyurtma nomi va tavsifini yozib bering, iltimos.", None)).start()
-        elif any(word in text_lower for word in [
-            "qanday vazifalar", "todoist", "buyurtmalar ro'yxati", "vazifalar bor", "buyurtmalar bor"
-        ]):
-            for t in get_todoist_tasks(full=True):
-                threading.Thread(target=safe_send_message, args=(message.chat_id, t, "HTML")).start()
-        else:
-            response = ask_gpt(text)
-            threading.Thread(target=safe_send_message, args=(message.chat_id, response, None)).start()
+    if "akbar" in text_lower or BOT_NAME.lower() in text_lower or is_reply_to_bot or message.reply_to_message:
+        response = ask_gpt_with_tasks(text, tasks_list)
+        threading.Thread(target=safe_send_message, args=(message.chat_id, response, None)).start()
 
-def ask_gpt(prompt):
+def ask_gpt_with_tasks(prompt, tasks):
     try:
+        task_info_text = json.dumps(tasks, ensure_ascii=False)
         response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[
                 {
                     "role": "system",
                     "content": (
-                        "Sen ishlab chiqarish jamoasining ichki sun’iy intellekt yordamchisan. "
-                        "Sening isming Akbar. Foydalanuvchilar bilan sizlab, jamoa a'zosi sifatida suhbatlash. "
-                        "Todoist asosida ishlaysan. Yordamga tayyormisan degan savollarga samimiy, aniq, odamga o‘xshab javob ber."
+                        "Siz ishlab chiqarish bo'yicha buyurtmalarni boshqaruvchi yordamchi AI botsiz. "
+                        "Quyida buyurtmalar ro'yxati mavjud. Foydalanuvchi sizdan har qanday savol so‘rasa, "
+                        "siz shu ro'yxat asosida aniq, qisqa, jamoa tilida javob berasiz. "
+                        "Savollar har xil bo'lishi mumkin: kim bajarayapti, qachon tugaydi, holati qanday, nimalar bor, va hokazo."
                     )
                 },
-                {"role": "user", "content": prompt}
+                {"role": "user", "content": f"Savol: {prompt}
+
+Buyurtmalar: {task_info_text}"}
             ],
-            max_tokens=400
+            max_tokens=800
         )
         return response["choices"][0]["message"]["content"].strip()
     except Exception as e:
