@@ -1,16 +1,15 @@
 import os
-import logging
 import openai
 from flask import Flask, request
 import telegram
 from dotenv import load_dotenv
 
-# .env faylni yuklaymiz
+# Load .env variables
 load_dotenv()
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-BOT_NAME = os.getenv("BOT_NAME", "Akbar")
+BOT_NAME = os.getenv("BOT_NAME", "@Akbar")
 
 openai.api_key = OPENAI_API_KEY
 bot = telegram.Bot(token=TELEGRAM_TOKEN)
@@ -24,27 +23,37 @@ def webhook():
     return "ok"
 
 def handle_message(message):
-    text = message.text
-    if text and ("akbar" in text.lower() or BOT_NAME.lower() in text.lower()):
+    text = message.text or ""
+    text_lower = text.lower()
+
+    # Log for debugging
+    print("🔍 Xabar:", text_lower)
+
+    # Trigger if "akbar" or bot name is mentioned
+    if "akbar" in text_lower or BOT_NAME.lower() in text_lower:
         response = ask_gpt(text)
-        message.reply_text(response)
+        message.reply_text("🧑‍💼 Akbar:\n" + response)
 
 def ask_gpt(prompt):
     try:
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
-            {"role": "system", "content":  "Sen 'Akbar' ismli yordamchi sun’iy intellektsan. "
-        "Sen ishlab chiqarish tashkilotining yordamchisi bo‘lib ishlaysan. "
-        "Sen kompaniya ishchilari bilan muloqot qilasan, hech qachon o‘zingni AI yoki algoritm deb tanishtirma. "
-        "O‘zingni oddiy ishchi, jamoa a’zosi sifatida tut. "
-        "Javoblaring samimiy, jamoaviy va rasmiy bo‘lsin. "
-        "Faqat o‘zbek tilida gapir, boshqa tillarda yozma. "
-        "Foydalanuvchi @AIAkbarBot yoki 'Akbar' deb yozsa, bu senga murojaat degani. "
-        "Hech qachon foydalanuvchini 'Akbar' deb chaqirma. "
-        "Faqat savollarga yoki topshiriqlarga kontekstga mos, soddalik bilan javob ber."},
-                ],
-
+                {
+                    "role": "system",
+                    "content": (
+                        "Sen 'Akbar' ismli sun'iy intellekt yordamchisan. "
+                        "Sen dizayn studiyasi ichki jamoasining a'zosisan. "
+                        "Foydalanuvchi 'Akbar' deb murojaat qilsa, bu sening isming deb tushun. "
+                        "Hech qachon foydalanuvchini 'Akbar' deb chaqirma. "
+                        "Foydalanuvchiga mijoz emas, balki ishchi sifatida javob ber. "
+                        "Javoblaring doimo jamoaviy, qisqa va rasmiy uslubda bo‘lsin. "
+                        "O'zingni ishchi sifatida tut, samimiy bo‘l, lekin ichki muomala uslubida. "
+                        "Har doim o‘zbek tilida javob yoz. Boshqa tillarda yozma."
+                    )
+                },
+                {"role": "user", "content": prompt}
+            ],
             max_tokens=500
         )
         return response["choices"][0]["message"]["content"].strip()
