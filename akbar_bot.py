@@ -97,11 +97,12 @@ def get_todoist_tasks():
 
         reply = ""
         for t in tasks:
-            due = t.get("due", {}).get("date", "Muddat belgilanmagan")
-            reply += f"📝 {t['content']}\n📅 Muddat: {due}\n\n"
+            due = t["due"]["date"] if t.get("due") and t["due"].get("date") else "Muddat belgilanmagan"
+            reply += f"📝 {t['content']}\\n📅 Muddat: {due}\\n\\n"
         return reply.strip()
     except Exception as e:
         return f"⚠️ Xatolik: {str(e)}"
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
