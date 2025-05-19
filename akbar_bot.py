@@ -20,6 +20,8 @@ openai.api_key = OPENAI_API_KEY
 bot = telegram.Bot(token=TELEGRAM_TOKEN)
 app = Flask(__name__)
 
+user_map = {}
+
 def safe_send_message(chat_id, text, parse_mode=None):
     try:
         bot.send_message(chat_id=chat_id, text=text, parse_mode=parse_mode)
@@ -28,6 +30,17 @@ def safe_send_message(chat_id, text, parse_mode=None):
 
 def strikethrough(text):
     return ''.join([c + '\u0336' for c in text])
+
+def load_todoist_users():
+    try:
+        headers = {"Authorization": f"Bearer {TODOIST_API_TOKEN}"}
+        response = requests.get("https://api.todoist.com/sync/v9/sync", headers=headers, params={"sync_token": "*", "resource_types": '["collaborators"]'})
+        if response.status_code == 200:
+            data = response.json()
+            for user in data.get("collaborators", []):
+                user_map[user["id"]] = user.get("full_name") or user.get("email")
+    except Exception as e:
+        print(f"⚠️ Foydalanuvchi yuklashda xatolik: {e}")
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -49,14 +62,15 @@ def todoist_webhook():
         threading.Thread(target=safe_send_message, args=(TELEGRAM_CHAT_ID, task_info, "HTML")).start()
     return "ok"
 
-def get_todoist_tasks():
+def get_todoist_tasks(full=False):
     try:
+        load_todoist_users()
         headers = {"Authorization": f"Bearer {TODOIST_API_TOKEN}"}
         params = {"project_id": TODOIST_PROJECT_ID}
         response = requests.get("https://api.todoist.com/rest/v2/tasks", headers=headers, params=params)
 
         if response.status_code != 200:
-            return ["⚠️ Vazifalarni olib bo‘lmadi."]
+            return {}
 
         all_tasks = response.json()
         tasks_dict = {}
@@ -69,20 +83,26 @@ def get_todoist_tasks():
                     subtasks_map[parent_id] = []
                 subtasks_map[parent_id].append((task["content"], "completed" if task.get("is_completed") else "active"))
             else:
+                creator = user_map.get(task.get("creator_id"), str(task.get("creator_id")))
+                assignee = user_map.get(task.get("assignee_id"), str(task.get("assignee_id")))
                 tasks_dict[task["id"]] = {
+                    "id": task["id"],
                     "name": task.get("content", "No name"),
                     "description": task.get("description", "—"),
                     "created": task.get("created_at", "—"),
                     "due": task.get("due", {}).get("date", "Muddat belgilanmagan") if task.get("due") else "Muddat belgilanmagan",
                     "url": task.get("url", "#"),
                     "subtasks": {},
-                    "creator": task.get("creator_id", "—"),
-                    "assignee": task.get("assignee_id", "—")
+                    "creator": creator,
+                    "assignee": assignee
                 }
 
         for parent_id, subtasks in subtasks_map.items():
             if parent_id in tasks_dict:
                 tasks_dict[parent_id]["subtasks"] = {name: status for name, status in subtasks}
+
+        if not full:
+            return tasks_dict
 
         messages = []
         for task in tasks_dict.values():
@@ -111,6 +131,19 @@ def get_todoist_tasks():
 def handle_message(message):
     text = message.text or ""
     text_lower = text.lower()
+    tasks = get_todoist_tasks()
+
+    if message.reply_to_message:
+        for task in tasks.values():
+            if task["name"] in message.reply_to_message.text:
+                if "bajaruvchi" in text_lower:
+                    response = f"👥 <b>Bajaruvchi:</b> {task['assignee']}"
+                elif "holat" in text_lower or "qanday" in text_lower:
+                    response = f"📌 <b>Buyurtma:</b> {task['name']}\n⏳ <b>Muddat:</b> {task['due']}"
+                else:
+                    response = "Buyurtmaga oid savolingizni aniqroq yozing."
+                threading.Thread(target=safe_send_message, args=(message.chat_id, response, "HTML")).start()
+                return
 
     is_reply_to_bot = (
         message.reply_to_message and
@@ -124,8 +157,7 @@ def handle_message(message):
         elif any(word in text_lower for word in [
             "qanday vazifalar", "todoist", "buyurtmalar ro'yxati", "vazifalar bor", "buyurtmalar bor"
         ]):
-            tasks = get_todoist_tasks()
-            for t in tasks:
+            for t in get_todoist_tasks(full=True):
                 threading.Thread(target=safe_send_message, args=(message.chat_id, t, "HTML")).start()
         else:
             response = ask_gpt(text)
