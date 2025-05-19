@@ -32,15 +32,17 @@ def todoist_webhook():
     if data and data.get("event_name") == "item:added":
         task = data.get("event_data", {})
         task_info = (
-            f"📌 <b>Yangi buyurtma qo‘shildi:</b>\n"
-            f"📝 <b>Nomi:</b> {task.get('content')}\n"
+            f"📌 <b>Yangi buyurtma qo‘shildi:</b>
+"
+            f"📝 <b>Nomi:</b> {task.get('content')}
+"
             f"📅 <b>Muddat:</b> {task.get('due', {}).get('date') or 'Belgilanmagan'}"
         )
-        bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=task_info, parse_mode=telegram.constants.ParseMode.HTML)
+        bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=task_info, parse_mode="HTML")
     return "ok"
 
 def strikethrough(text):
-    return ''.join([c + '\u0336' for c in text])
+    return ''.join([c + '̶' for c in text])
 
 def get_todoist_tasks():
     try:
@@ -62,8 +64,10 @@ def get_todoist_tasks():
             task_url = task.get("url", "#")
 
             message = (
-                f"📝 <b>Nomi:</b> {title}\n"
-                f"📅 <b>Muddat:</b> {due}\n"
+                f"📝 <b>Nomi:</b> {title}
+"
+                f"📅 <b>Muddat:</b> {due}
+"
                 f"🔗 <a href='{task_url}'>Todoist'da ochish</a>"
             )
 
@@ -91,7 +95,7 @@ def handle_message(message):
         ]):
             tasks = get_todoist_tasks()
             for t in tasks:
-                bot.send_message(chat_id=message.chat_id, text=t, parse_mode=telegram.constants.ParseMode.HTML)
+                bot.send_message(chat_id=message.chat_id, text=t, parse_mode="HTML")
         else:
             response = ask_gpt(text)
             bot.send_message(chat_id=message.chat_id, text=response)
