@@ -32,7 +32,7 @@ def handle_message(message):
     # Trigger if "akbar" or bot name is mentioned
     if "akbar" in text_lower or BOT_NAME.lower() in text_lower:
         response = ask_gpt(text)
-        message.reply_text("🧑‍💼 Akbar:\n" + response)
+        message.reply_text(response)
 
 def ask_gpt(prompt):
     try:
