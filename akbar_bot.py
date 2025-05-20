@@ -143,8 +143,7 @@ def create_todoist_task(name, description):
         }
         response = requests.post("https://api.todoist.com/rest/v2/tasks", headers=headers, data=json.dumps(data))
         if response.status_code == 200 or response.status_code == 204:
-            return f"📌 Buyurtma muvaffaqiyatli qo‘shildi:
-📝 {name}"
+            return f"📌 Buyurtma muvaffaqiyatli qo‘shildi: 📝 {name}"
         else:
             return f"⚠️ Xatolik: Buyurtma qo‘shilmadi. {response.text}"
     except Exception as e:
